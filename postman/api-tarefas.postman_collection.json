@@ -1,0 +1,518 @@
+{
+  "info": {
+    "name": "API de Tarefas - Roteiro de Testes",
+    "description": "Roteiro de testes da API de Tarefas. Rode na ordem (01 a 14) ou use o Collection Runner. Selecione o ambiente 'Local' ou 'Render' antes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Health check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Banco conectado\", () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.status).to.eql(\"ok\");",
+              "  pm.expect(json.banco).to.eql(\"conectado\");",
+              "});",
+              "pm.test(\"Resposta em menos de 3s\", () => pm.expect(pm.response.responseTime).to.be.below(3000));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "description": "Confirma que a API está no ar e que o banco responde. No Render gratuito, a 1ª chamada pode demorar ~1 min (serviço acordando)."
+      }
+    },
+    {
+      "name": "02 - Listar tarefas",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Retorna um array\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas"
+          ]
+        },
+        "description": "Lista todas as tarefas. Banco vazio retorna []."
+      }
+    },
+    {
+      "name": "03 - Criar tarefa (válida)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.test(\"Tem id numérico\", () => pm.expect(json.id).to.be.a(\"number\"));",
+              "pm.test(\"Título salvo corretamente\", () => pm.expect(json.titulo).to.eql(\"Preparar aula de deploy\"));",
+              "pm.test(\"Nasce como não concluída\", () => pm.expect(json.concluida).to.eql(false));",
+              "// Guarda o id para as próximas requisições",
+              "pm.collectionVariables.set(\"tarefaId\", json.id);",
+              "console.log(\"tarefaId salvo:\", json.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas"
+          ]
+        },
+        "description": "Cria uma tarefa e salva o id retornado na variável {{tarefaId}}.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titulo\": \"Preparar aula de deploy\",\n  \"descricao\": \"Testar a API no Postman\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "04 - Criar tarefa (sem título) -> 400",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Mensagem de erro presente\", () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.erro).to.be.a(\"string\");",
+              "  pm.expect(json.detalhes).to.be.an(\"array\").that.is.not.empty;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas"
+          ]
+        },
+        "description": "Teste negativo: a API deve recusar tarefa sem título.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"descricao\": \"Sem título não pode\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "05 - Criar tarefa (JSON malformado) -> 400",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Avisa que o JSON é inválido\", () => pm.expect(pm.response.json().erro).to.include(\"JSON\"));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas"
+          ]
+        },
+        "description": "Teste negativo: corpo com JSON quebrado.",
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"titulo\": \"faltou fechar aspas }",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "06 - Buscar tarefa por id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"É a tarefa criada\", () => {",
+              "  pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"tarefaId\")));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas/{{tarefaId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas",
+            "{{tarefaId}}"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "07 - Atualizar tarefa (concluir)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Agora está concluída\", () => pm.expect(pm.response.json().concluida).to.eql(true));",
+              "pm.test(\"Título não mudou\", () => pm.expect(pm.response.json().titulo).to.eql(\"Preparar aula de deploy\"));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas/{{tarefaId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas",
+            "{{tarefaId}}"
+          ]
+        },
+        "description": "Atualização parcial: só o campo enviado muda.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"concluida\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "08 - Atualizar com tipo errado -> 400",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas/{{tarefaId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas",
+            "{{tarefaId}}"
+          ]
+        },
+        "description": "Teste negativo: concluida precisa ser booleano.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"concluida\": \"sim\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "09 - Listar só concluídas",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Todas estão concluídas\", () => {",
+              "  pm.response.json().forEach(t => pm.expect(t.concluida).to.eql(true));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas?concluida=true",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas"
+          ],
+          "query": [
+            {
+              "key": "concluida",
+              "value": "true"
+            }
+          ]
+        },
+        "description": "Filtro por query string."
+      }
+    },
+    {
+      "name": "10 - Remover tarefa",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas/{{tarefaId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas",
+            "{{tarefaId}}"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "11 - Buscar tarefa removida -> 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas/{{tarefaId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas",
+            "{{tarefaId}}"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "12 - Remover de novo -> 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas/{{tarefaId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas",
+            "{{tarefaId}}"
+          ]
+        },
+        "description": "DELETE de algo que não existe mais."
+      }
+    },
+    {
+      "name": "13 - ID inválido -> 400",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/tarefas/abc",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tarefas",
+            "abc"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "14 - Rota inexistente -> 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/rota-que-nao-existe",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "rota-que-nao-existe"
+          ]
+        },
+        "description": ""
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "tarefaId",
+      "value": ""
+    }
+  ]
+}

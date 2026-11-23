@@ -1,0 +1,24 @@
+// Schema do Prisma: descreve o banco e o modelo de dados.
+// A URL de conexão vem da variável de ambiente DATABASE_URL (.env local ou painel do Render).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Tarefa {
+  id         Int      @id @default(autoincrement())
+  titulo     String   @db.VarChar(100)
+  descricao  String?  @db.VarChar(255)
+  concluida  Boolean  @default(false)
+  criadaEm   DateTime @default(now()) @map("criada_em")
+  atualizadaEm DateTime @updatedAt @map("atualizada_em")
+
+  // Nome da tabela com prefixo para não conflitar com tabelas de outros projetos
+  // que usem o mesmo banco (ex.: "produtos", "loja_usuarios").
+  @@map("aula_tarefas")
+}
